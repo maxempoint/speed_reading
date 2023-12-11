@@ -10,7 +10,7 @@ class SpeedReaderApp:
         self.root = root
         self.root.title("Speed Reading App")
 
-        self.text_entry = tk.Text(root, wrap="word", width=50, height=10, font=("Helvetica", 14))
+        self.text_entry = tk.Text(root, wrap="word", width=50, height=10, font=("Helvetica", 50))
         self.text_entry.grid(row=0, column=0, padx=10, pady=10, columnspan=3)
 
         self.size_label = ttk.Label(root, text="Text Size:")
@@ -33,8 +33,8 @@ class SpeedReaderApp:
         self.load_clipboard_button = ttk.Button(root, text="Load Text from Clipboard", command=self.load_text_from_clipboard)
         self.load_clipboard_button.grid(row=2, column=1, padx=10, pady=10)
 
-        self.start_button = ttk.Button(root, text="Start Reading", command=self.start_reading)
-        self.start_button.grid(row=3, column=1, padx=10, pady=10)
+        #self.start_button = ttk.Button(root, text="Start Reading", command=self.start_reading)
+        #self.start_button.grid(row=3, column=1, padx=10, pady=10)
 
         self.clean_button = ttk.Button(root, text="Clean Text from Website", command=self.clean_text_from_website)
         self.clean_button.grid(row=2, column=2, padx=10, pady=10)
@@ -42,7 +42,7 @@ class SpeedReaderApp:
         self.pause_button = ttk.Button(root, text="Pause/Resume", command=self.pause_reading)
         self.pause_button.grid(row=3, column=0, padx=10, pady=10)
 
-        self.paused = False
+        self.paused = True
         self.words = []
         self.current_word_index = 0
         self.paused_words = []
@@ -55,9 +55,17 @@ class SpeedReaderApp:
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, 'html.parser')
 
-                # Extract text from paragraph tags
-                paragraphs = soup.find_all('p')
-                text = ' '.join([p.get_text(strip=True) for p in paragraphs])
+                # Process text content
+                text_parts = []
+                for element in soup.find_all(['p']):
+                    if element.name == 'a':
+                        # Process link text
+                        text_parts.append(f"[{element.get_text()}]")
+                    else:
+                        # Process other elements and text
+                        text_parts.append(element.get_text())
+
+                text = ' '.join(text_parts)
 
                 # Update the text entry
                 self.text_entry.delete(1.0, tk.END)
@@ -117,13 +125,14 @@ class SpeedReaderApp:
 
     def show_last_words(self):
         if self.paused and self.paused_words:
-            # Create a pop-up window to display the last 15 words before pausing
+            # Create a pop-up window to display the last 30 words before pausing
             popup = tk.Toplevel(self.root)
             popup.title("Last 30 Words Before Pause")
 
             text = " ".join(self.paused_words)
-            label = tk.Label(popup, text=text, wraplength=400)
-            label.pack(padx=10, pady=10)
+            label = tk.Text(popup, width=50, height=10)
+            label.insert(tk.END, text)
+            label.pack(padx=100, pady=100)
 
 if __name__ == "__main__":
     root = tk.Tk()
