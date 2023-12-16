@@ -4,6 +4,7 @@ import time
 import pyperclip
 import requests
 from bs4 import BeautifulSoup
+from functools import partial
 
 class SpeedReaderApp:
     def __init__(self, root):
@@ -14,38 +15,45 @@ class SpeedReaderApp:
         self.text_entry.grid(row=0, column=0, padx=10, pady=10, columnspan=3)
 
         self.size_label = ttk.Label(root, text="Text Size:")
-        self.size_label.grid(row=1, column=0, padx=10, pady=10)
+        self.size_label.grid(row=1, column=0, padx=0, pady=0)
 
         self.size_label = ttk.Label(root, text="Speed:")
-        self.size_label.grid(row=1, column=2, padx=10, pady=10)
+        self.size_label.grid(row=1, column=1, padx=0, pady=0)
 
         self.size_entry = ttk.Entry(root, width=10)
         self.size_entry.insert(0, "50")  # Default size
-        self.size_entry.grid(row=1, column=1, padx=10, pady=10)
+        self.size_entry.grid(row=2, column=0, padx=0, pady=0)
 
         self.speed = ttk.Entry(root, width=10)
-        self.speed.insert(0, "400")  # Default speed
-        self.speed.grid(row=1, column=3, padx=10, pady=10)
+        self.speed.insert(0, "2000")  # Default speed
+        self.speed.grid(row=2, column=1, padx=0, pady=0)
 
         self.load_file_button = ttk.Button(root, text="Load Text from File", command=self.load_text_from_file)
-        self.load_file_button.grid(row=2, column=0, padx=10, pady=10)
+        self.load_file_button.grid(row=3, column=0, padx=10, pady=10)
 
         self.load_clipboard_button = ttk.Button(root, text="Load Text from Clipboard", command=self.load_text_from_clipboard)
-        self.load_clipboard_button.grid(row=2, column=1, padx=10, pady=10)
-
-        #self.start_button = ttk.Button(root, text="Start Reading", command=self.start_reading)
-        #self.start_button.grid(row=3, column=1, padx=10, pady=10)
+        self.load_clipboard_button.grid(row=4, column=0, padx=10, pady=10)
 
         self.clean_button = ttk.Button(root, text="Clean Text from Website", command=self.clean_text_from_website)
-        self.clean_button.grid(row=2, column=2, padx=10, pady=10)
+        self.clean_button.grid(row=5, column=0, padx=10, pady=10)
 
         self.pause_button = ttk.Button(root, text="Pause/Resume", command=self.pause_reading)
-        self.pause_button.grid(row=3, column=0, padx=10, pady=10)
+        self.pause_button.grid(row=4, column=1, padx=10, pady=10)
+
+        self.label = tk.Text(self.root, width=50, height=5)
+        #self.popup.title("Last 15 Words Before Pause")
+        #self.label = ttk.Text(self.popup, width=50, height=10)
+        self.next_button = ttk.Button(root, text="<<", command=self.set_words_before)
+        self.next_button.grid(row=3, column=1, padx=10, pady=10)
+        #self.label.pack(padx=100, pady=100)
+        self.label.grid(row=1, column=2, padx=10, pady=10)
 
         self.paused = True
         self.words = []
         self.current_word_index = 0
         self.paused_words = []
+        self.cache_index = 0
+        self.popup = None
 
     def clean_text_from_website(self):
         url = simpledialog.askstring("Website URL", "Enter the URL of the website:")
@@ -55,11 +63,11 @@ class SpeedReaderApp:
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, 'html.parser')
 
-                # Process text content
+                # Process text content around links
                 text_parts = []
                 for element in soup.find_all(['p']):
                     if element.name == 'a':
-                        # Process link text
+                        # Process link text, e.g., append the link text in square brackets
                         text_parts.append(f"[{element.get_text()}]")
                     else:
                         # Process other elements and text
@@ -91,48 +99,79 @@ class SpeedReaderApp:
             self.words = clipboard_text.split()
 
     def start_reading(self):
-        if not self.paused:
-            text = self.text_entry.get("1.0", tk.END)
-            size = int(self.size_entry.get())
-            speed = float(self.speed.get())
+        text = self.text_entry.get("1.0", tk.END)
+        size = int(self.size_entry.get())
+        speed = float(self.speed.get())
 
-            self.text_entry.config(font=("Helvetica", size))
+        self.text_entry.config(font=("Helvetica", size))
 
-            if text and speed > 0:
-                words = text.split()
-                delay = 60 / speed
+        if text and speed > 0:
+            words = text.split()
+            delay = 60 / speed
 
-                for i in range(self.current_word_index, len(self.words)):
-                    if self.paused:
-                       break
-                    self.text_entry.delete(1.0, tk.END)
-                    self.text_entry.insert(tk.END, self.words[i])
-                    self.text_entry.tag_configure("center", justify="center")
-                    self.text_entry.tag_add("center", 1.0, tk.END)
-                    self.root.update()
+            for i in range(self.current_word_index, len(self.words)):
+                if self.paused:
+                    break
+                self.text_entry.delete(1.0, tk.END)
+                self.text_entry.insert(tk.END, self.words[i])
+                self.text_entry.tag_configure("center", justify="center")
+                self.text_entry.tag_add("center", 1.0, tk.END)
+                self.root.update()
+                if len(self.words[i]) > 8:
+                    time.sleep(2*delay)
+                else:
                     time.sleep(delay)
-                    self.current_word_index = i + 1
-            if self.current_word_index == len(self.words):
-                self.current_word_index = 0
-            self.show_last_words()
+                self.current_word_index = i + 1
+        # If the loop is breaked:
+        if self.current_word_index == len(self.words):
+            self.current_word_index = 0
+        self.show_last_words()
 
     def pause_reading(self):
         self.paused = not self.paused
-        self.start_reading()
-        if self.paused:
-        #   # Capture the last 15 words before pausing
-            self.paused_words = self.words[max(0, self.current_word_index - 30):self.current_word_index]
+        self.clear_last_words()
+        if not self.paused:
+            self.start_reading()
+        else:
+            # Capture the last 15 words before pausing
+            self.set_paused_words(self.current_word_index - 15, self.current_word_index) #TODO again done in set_words_before()
+            self.cache_index = self.current_word_index - 15
+    
+    def clear_last_words(self):
+        self.paused_words = []
+        self.set_side_text()
+
+    def set_paused_words(self, num, current_index):
+        print(f"Num is {num}")
+        print(f"Current index is {current_index}")
+        start = max(0, num)
+        end = max(0, current_index)
+        self.paused_words = self.words[start:end]
+        # find beginning of sentence
+        end_of_sentence = "."
+        while start > 0 and not end_of_sentence in self.words[start]:
+            start -= 1
+            if not end_of_sentence in self.words[start]:
+                self.paused_words.insert(0,self.words[start])
+        print(self.paused_words)
+    
+    def set_side_text(self):
+        text = " ".join(self.paused_words)
+        try:
+            self.label.delete(1.0, tk.END)
+        except Exception as e:
+            print(e)
+        self.label.insert(tk.END, text)
+    
+    def set_words_before(self):
+        self.set_paused_words(self.cache_index - 15, self.cache_index)
+        self.cache_index -= 15
+        self.set_side_text()
 
     def show_last_words(self):
         if self.paused and self.paused_words:
-            # Create a pop-up window to display the last 30 words before pausing
-            popup = tk.Toplevel(self.root)
-            popup.title("Last 30 Words Before Pause")
-
-            text = " ".join(self.paused_words)
-            label = tk.Text(popup, width=50, height=10)
-            label.insert(tk.END, text)
-            label.pack(padx=100, pady=100)
+            #self.cache_index = self.current_word_index
+            self.set_side_text()
 
 if __name__ == "__main__":
     root = tk.Tk()
