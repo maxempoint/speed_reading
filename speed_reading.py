@@ -38,15 +38,17 @@ class SpeedReaderApp:
         self.clean_button.grid(row=5, column=0, padx=10, pady=10)
 
         self.pause_button = ttk.Button(root, text="Pause/Resume", command=self.pause_reading)
-        self.pause_button.grid(row=4, column=1, padx=10, pady=10)
+        self.pause_button.grid(row=3, column=1, padx=10, pady=10)
 
-        self.label = tk.Text(self.root, width=50, height=5)
-        #self.popup.title("Last 15 Words Before Pause")
-        #self.label = ttk.Text(self.popup, width=50, height=10)
-        self.next_button = ttk.Button(root, text="<<", command=self.set_words_before)
-        self.next_button.grid(row=3, column=1, padx=10, pady=10)
-        #self.label.pack(padx=100, pady=100)
-        self.label.grid(row=1, column=2, padx=10, pady=10)
+        self.label = tk.Text(self.root, width=50, height=10)
+
+        self.backwards_button = ttk.Button(root, text="<<", command=self.set_words_before)
+        self.backwards_button.grid(row=4, column=1, padx=0, pady=10)
+
+        self.forwards_button = ttk.Button(root, text=">>", command=self.set_words_forward)
+        self.forwards_button.grid(row=5, column=1, padx=0, pady=10)
+
+        self.label.grid(row=1, column=2, padx=10, pady=10, rowspan=5)
 
         self.paused = True
         self.words = []
@@ -54,6 +56,7 @@ class SpeedReaderApp:
         self.paused_words = []
         self.cache_index = 0
         self.popup = None
+        self.PAUSE_WORD_LEN = 20
 
     def clean_text_from_website(self):
         url = simpledialog.askstring("Website URL", "Enter the URL of the website:")
@@ -133,9 +136,9 @@ class SpeedReaderApp:
         if not self.paused:
             self.start_reading()
         else:
-            # Capture the last 15 words before pausing
-            self.set_paused_words(self.current_word_index - 15, self.current_word_index) #TODO again done in set_words_before()
-            self.cache_index = self.current_word_index - 15
+            # Capture the last self.PAUSE_WORD_LEN words before pausing
+            self.set_paused_words(self.current_word_index - self.PAUSE_WORD_LEN, self.current_word_index) #TODO again done in set_words_before()
+            self.cache_index = self.current_word_index - self.PAUSE_WORD_LEN
     
     def clear_last_words(self):
         self.paused_words = []
@@ -147,12 +150,20 @@ class SpeedReaderApp:
         start = max(0, num)
         end = max(0, current_index)
         self.paused_words = self.words[start:end]
-        # find beginning of sentence
+        # find beginning and end of a sentence
         end_of_sentence = "."
         while start > 0 and not end_of_sentence in self.words[start]:
             start -= 1
             if not end_of_sentence in self.words[start]:
                 self.paused_words.insert(0,self.words[start])
+        while end < len(self.words):
+            if not end_of_sentence in self.words[end]:
+                self.paused_words.append(self.words[end])
+            else:
+                # the word with the dot (.) should also be added
+                self.paused_words.append(self.words[end])
+                break
+            end += 1
         print(self.paused_words)
     
     def set_side_text(self):
@@ -164,8 +175,13 @@ class SpeedReaderApp:
         self.label.insert(tk.END, text)
     
     def set_words_before(self):
-        self.set_paused_words(self.cache_index - 15, self.cache_index)
-        self.cache_index -= 15
+        self.set_paused_words(self.cache_index - self.PAUSE_WORD_LEN, self.cache_index)
+        self.cache_index -= self.PAUSE_WORD_LEN
+        self.set_side_text()
+
+    def set_words_forward(self):
+        self.set_paused_words(self.cache_index, self.cache_index + self.PAUSE_WORD_LEN)
+        self.cache_index += self.PAUSE_WORD_LEN
         self.set_side_text()
 
     def show_last_words(self):
