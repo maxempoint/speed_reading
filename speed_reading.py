@@ -25,7 +25,7 @@ class SpeedReaderApp:
         self.size_entry.grid(row=2, column=0, padx=0, pady=0)
 
         self.speed = ttk.Entry(root, width=10)
-        self.speed.insert(0, "2000")  # Default speed
+        self.speed.insert(0, "450")  # Default speed
         self.speed.grid(row=2, column=1, padx=0, pady=0)
 
         self.load_file_button = ttk.Button(root, text="Load Text from File", command=self.load_text_from_file)
@@ -55,10 +55,17 @@ class SpeedReaderApp:
         self.current_word_index = 0
         self.paused_words = []
         self.cache_index = 0
-        self.popup = None
         self.PAUSE_WORD_LEN = 20
 
+    def clean_words(self):
+        self.paused = True
+        self.words = []
+        self.current_word_index = 0
+        self.cache_index = 0
+        self.paused_words = []
+
     def clean_text_from_website(self):
+        self.clean_words()
         url = simpledialog.askstring("Website URL", "Enter the URL of the website:")
         if url:
             try:
@@ -86,6 +93,7 @@ class SpeedReaderApp:
                 print(f"Error: {e}")
 
     def load_text_from_file(self):
+        self.clean_words()
         file_path = tk.filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
         if file_path:
             with open(file_path, 'r') as file:
@@ -95,6 +103,7 @@ class SpeedReaderApp:
             self.words = text.split()
 
     def load_text_from_clipboard(self):
+        self.clean_words()
         clipboard_text = pyperclip.paste()
         if clipboard_text.strip():
             self.text_entry.delete(1.0, tk.END)
@@ -120,8 +129,9 @@ class SpeedReaderApp:
                 self.text_entry.tag_configure("center", justify="center")
                 self.text_entry.tag_add("center", 1.0, tk.END)
                 self.root.update()
-                if len(self.words[i]) > 8:
-                    time.sleep(2*delay)
+                len_word = len(self.words[i]) 
+                if len_word > 8:
+                    time.sleep((len_word/6)*delay)
                 else:
                     time.sleep(delay)
                 self.current_word_index = i + 1
@@ -145,6 +155,7 @@ class SpeedReaderApp:
         self.set_side_text()
 
     def set_paused_words(self, num, current_index):
+        # TODO also into clipboard for easier note taking
         print(f"Num is {num}")
         print(f"Current index is {current_index}")
         start = max(0, num)
